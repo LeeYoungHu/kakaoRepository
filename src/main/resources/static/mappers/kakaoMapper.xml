@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakao.dao.kakaoDao">
+	
+	<insert id="insertTransactionData" parameterType="String">
+		INSERT INTO PAYMENT_TRANSACTION
+			(
+				UNIQUE_ID
+				,CREATE_ID
+				,CREATE_DATE
+			)
+		VALUES
+			(
+				#{value}
+				,'SYSTEM'
+				,SYSDATE
+			)
+	</insert>
+	
+	<delete id="deleteTransactionData" parameterType="String">
+		DELETE FROM PAYMENT_TRANSACTION 
+		WHERE UNIQUE_ID = #{value}
+	</delete>
+	
+	<select id="getNewManageId" resultType="String">
+		SELECT 
+			TO_CHAR(SYSDATE, 'YYYYMMDD') || LPAD(SEQ_MANAGE.NEXTVAL, 12, '0')
+		 FROM DUAL
+	</select>
+	
+	<insert id="insertPaymentData" parameterType="java.util.HashMap">
+		INSERT INTO PAYMENT_INFO
+			(
+				MANAGE_ID
+				,CARD_INFO
+				,INSTALLMENT
+				,PRICE
+				,TAX
+				,STATUS
+				,ORG_MANAGE_ID
+				,ACCUM_CANCEL_PRICE
+				,ACCUM_TAX_CANCEL_PRICE
+				,IF_DATA
+				,CREATE_ID
+				,CREATE_DATE
+				,MODIFY_ID
+				,MODIFY_DATE
+			)
+		VALUES
+			(
+				#{MANAGE_ID}
+				,#{CARD_INFO}
+				,#{INSTALLMENT}
+				,#{PRICE}
+				,#{TAX}
+				,#{STATUS}
+				,#{ORG_MANAGE_ID}
+				,#{ACCUM_CANCEL_PRICE}
+				,#{ACCUM_TAX_CANCEL_PRICE}
+				,#{IF_DATA}
+				,'SYSTEM'
+				,SYSDATE
+				,'SYSTEM'
+				,SYSDATE				
+			)
+	</insert>
+	
+	<select id="getPaymentInfo" parameterType="String" resultType="java.util.HashMap">
+		SELECT
+			MANAGE_ID
+			,CARD_INFO
+			,INSTALLMENT
+			,PRICE
+			,NVL(TAX, 0) AS TAX
+			,STATUS
+			,ORG_MANAGE_ID
+			,NVL(ACCUM_CANCEL_PRICE, 0) AS ACCUM_CANCEL_PRICE
+			,NVL(ACCUM_TAX_CANCEL_PRICE, 0) AS ACCUM_TAX_CANCEL_PRICE
+			,IF_YN
+			,CASE WHEN STATUS = '02' AND (SELECT PRICE + TAX FROM PAYMENT_INFO WHERE MANAGE_ID = A.ORG_MANAGE_ID) = (A.PRICE + A.TAX) THEN 'Y' 
+			ELSE 'N' END AS PARTIAL_YN
+		FROM PAYMENT_INFO A
+		WHERE MANAGE_ID = #{value}			
+	</select>
+	
+	<select id="getTransactionDataCount" parameterType="String" resultType="Integer">
+		SELECT 
+			COUNT(UNIQUE_ID) 
+		FROM PAYMENT_TRANSACTION 
+		WHERE UNIQUE_ID = #{value} AND ROWNUM = 1
+	</select>
+	
+	<update id="updateOrgPaymentData" parameterType="java.util.HashMap">
+		UPDATE PAYMENT_INFO
+		SET ACCUM_CANCEL_PRICE = NVL(ACCUM_CANCEL_PRICE, 0) + #{PRICE}
+			,ACCUM_TAX_CANCEL_PRICE = NVL(ACCUM_TAX_CANCEL_PRICE, 0) + #{TAX}
+			,MODIFY_ID = 'SYSTEM'
+			,MODIFY_DATE = SYSDATE
+		WHERE MANAGE_ID = #{ORG_MANAGE_ID}
+	</update>
+
+</mapper>
